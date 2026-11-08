@@ -13,6 +13,7 @@ from markupsafe import escape
 from models import Post, User, db
 
 HOUR = 60 * 60
+BEARER_SCHEME = "Bearer"
 
 app = Flask(__name__)
 app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get(
@@ -61,7 +62,7 @@ def login():
         return jsonify({"msg": "username or password incorrect"}), 401
 
     token = create_access_token(identity=str(user.id))
-    return jsonify({"access_token": token, "token_type": "Bearer"}), 200 #nosec B105
+    return jsonify({"access_token": token, "token_type": BEARER_SCHEME}), 200
 
 
 @app.route("/api/data", methods=["GET"])
