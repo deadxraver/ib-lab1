@@ -25,7 +25,47 @@ jobs:
           pip install --quiet --disable-pip-version-check bandit pip-audit
 
       - name: SAST - Bandit
-        run: bandit -q -r . -x ./venv,./.git
+        id: bandit
+        continue-on-error: true
+        run: |
+          set +e
+          bandit -r . -x ./venv,./.git -f json -o bandit-report.json
+          echo "exit_code=$?" >> "$GITHUB_OUTPUT"
 
       - name: SCA - pip-audit
-        run: pip-audit -r requirements.txt --strict
+        id: pipaudit
+        continue-on-error: true
+        run: |
+          set +e
+          pip-audit -r requirements.txt --strict -f json -o pip-audit-report.json
+          echo "exit_code=$?" >> "$GITHUB_OUTPUT"
+
+      - name: Upload Bandit report
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: bandit-report
+          path: bandit-report.json
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Upload pip-audit report
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: pip-audit-report
+          path: pip-audit-report.json
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Fail job if Bandit found issues
+        if: steps.bandit.outputs.exit_code != '0'
+        run: |
+          echo "Bandit found issues. See artifact bandit-report."
+          exit 1
+
+      - name: Fail job if pip-audit found vulnerabilities
+        if: steps.pipaudit.outputs.exit_code != '0'
+        run: |
+          echo "pip-audit found vulnerabilities. See artifact pip-audit-report."
+          exit 1
